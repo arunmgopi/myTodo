@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do Application</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-custom {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-custom:hover {
+            background-color: #0056b3;
+        }
+
+        .task-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .task-completed {
+            text-decoration: line-through;
+            color: #6c757d;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <h1 class="fw-bold">My To-Do List</h1>
+            <p class="text-muted">Keep track of your tasks efficiently</p>
+        </div>
+
+        <!-- Task Input Form -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form id="taskForm">
+                    <div class="input-group">
+                        <input type="text" id="taskName" class="form-control" placeholder="Add a new task" aria-label="Add a new task">
+                        <button type="submit" class="btn btn-custom">Add Task</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Task List -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Your Tasks</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group" id="taskList">
+                    <!-- Dynamic tasks will be appended here -->
+                </ul>
+                <!-- Empty state -->
+                <div id="emptyState" class="empty-state">No tasks to display. Add your first task!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <!-- JavaScript -->
+    <script>
+        function loadTasks() {
+            $.ajax({
+                url: "http://192.168.0.121:2030/api/task",
+                type: "GET",
+                success: function (tasks) {
+                    const taskList = $("#taskList");
+                    taskList.empty();
+
+                    if (tasks.length === 0) {
+                        $("#emptyState").show();
+                    } else {
+                        $("#emptyState").hide();
+                        tasks.forEach(task => {
+                            const taskClass = task.isCompleted ? "task-completed" : "";
+                            taskList.append(`
+                                <li class="list-group-item d-flex justify-content-between align-items-center task-row">
+                                    <span class="${taskClass}">${task.taskName}</span>
+                                    <div>
+                                        <button class="btn btn-sm btn-success complete-btn me-2" data-id="${task.taskId}" ${task.isCompleted ? "disabled" : ""}>Complete</button>
+                                        <button class="btn btn-sm btn-danger delete-btn" data-id="${task.taskId}">Delete</button>
+                                    </div>
+                                </li>
+                            `);
+                        });
+                    }
+                },
+                error: function () {
+                    alert("Error loading tasks.");
+                }
+            });
+        }
+
+        function addTask(taskName) {
+            $.ajax({
+                url: "http://192.168.0.121:2030/api/task",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ taskName: taskName, isCompleted: false }),
+                success: function () {
+                    $("#taskName").val("");
+                    loadTasks();
+                },
+                error: function () {
+                    alert("Error adding task.");
+                }
+            });
+        }
+
+        function completeTask(taskId) {
+            $.ajax({
+                url: `http://192.168.0.121:2030/api/task/${taskId}`,
+                type: "PUT",
+                success: function () {
+                    loadTasks();
+                },
+                error: function () {
+                    alert("Error marking task as complete.");
+                }
+            });
+        }
+
+        function deleteTask(taskId) {
+            $.ajax({
+                url: `http://192.168.0.121:2030/api/task/${taskId}`,
+                type: "DELETE",
+                success: function () {
+                    loadTasks();
+                },
+                error: function () {
+                    alert("Error deleting task.");
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            loadTasks();
+
+            $("#taskForm").submit(function (e) {
+                e.preventDefault();
+                const taskName = $("#taskName").val();
+                if (taskName.trim() === "") {
+                    alert("Task name cannot be empty.");
+                    return;
+                }
+                addTask(taskName);
+            });
+
+            $(document).on("click", ".complete-btn", function () {
+                const taskId = $(this).data("id");
+                completeTask(taskId);
+            });
+
+            $(document).on("click", ".delete-btn", function () {
+                const taskId = $(this).data("id");
+                deleteTask(taskId);
+            });
+        });
+    </script>
+</body>
+</html>
